@@ -5,19 +5,12 @@ const int LED_PIN = 5;
 const int NUM_LEDS = 20;
 const int BUTTON_PIN = 21; // GIOP4 pin connected to the button
 
-// Button debounce constants/variables
-const int DEBOUNCE_TIME = 50;
-
-int last_button_steady_state = LOW;   // the previous state from the input pin
-int last_button_state = LOW;          // the previous flickerable state from the input pin
-int current_button_state = LOW;       // the current reading from the input pin
-unsigned long last_debounce_time = 0; // the last time the output pin was toggled
-
 // other variables
-int current_state = -1;
+volatile int current_state = -1;
 int n_states = 3;
 int SpeedDelay = 100;
 int WaveDelay = 100;
+const int DEBOUNCE_TIME = 100;
 
 const int BRIGHTNESS = 200;        // adjust brightness
 const int UPDATES_PER_SECOND = 45; // "speed" the lights flow
@@ -39,28 +32,19 @@ extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
 
 CRGB leds[NUM_LEDS];
 
-// This function returns true if button was pressed, otherwise false
-// It has debounce
-bool button_pressed()
+void button_interrupt_handler()
 {
-  bool pressed = false;
-  current_button_state = digitalRead(BUTTON_PIN);
-  if (current_button_state != last_button_state)
+  static unsigned long last_interrupt_time = 0;
+  unsigned long interrupt_time = millis();
+  if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME) 
   {
-    last_debounce_time = millis();
-    last_button_state = current_button_state;
-  }
-
-  if ((millis() - last_debounce_time) > DEBOUNCE_TIME)
-  {
-    // button was pressed
-    if (last_button_steady_state == HIGH && current_button_state == LOW)
+    ++current_state;
+    if (current_state == n_states)
     {
-      pressed = true;
+      current_state = 0;
     }
-    last_button_steady_state = current_button_state;
   }
-  return pressed;
+  last_interrupt_time = interrupt_time;
 }
 
 // Set given led to RGB color
@@ -169,6 +153,7 @@ void update_stripe_state()
 void setup()
 {
   delay(3000); // power-up safety delay
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), button_interrupt_handler, RISING);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
@@ -178,14 +163,4 @@ void setup()
 void loop()
 {
   update_stripe_state();
-  if (button_pressed())
-  {
-    Serial.println(current_state);
-    Serial.println("Button pressed");
-    ++current_state;
-    if (current_state == n_states)
-    {
-      current_state = 0;
-    }
-  }
 }
