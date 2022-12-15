@@ -153,7 +153,7 @@ void update_stripe_state()
 void setup()
 {
   delay(3000); // power-up safety delay
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), button_interrupt_handler, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), button_interrupt_handler, RISING);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
